@@ -1,0 +1,17 @@
+
+         README: ARM Limited VersatilePb
+
+This file contains board-specific information for the ARM Limited
+Integrator target boards.  This file documents BSP interface changes
+from previous software or hardware versions, and notifies the user of
+serious caveats that must be noted before using this BSP.
+Additionally, the target board's reference entry (i.e.
+versatilepb/target.ref) provides board-specific information necessary
+to run VxWorks and should be read fully before this BSP is used.
+
+--------------------------------------------------------------------------------
+RELEASE 2.0/0
+
+    Released for VxWorks 6.6
+    Only interrupt controller, timer, sio are supported.
+
