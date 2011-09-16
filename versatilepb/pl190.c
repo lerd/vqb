@@ -1,10 +1,9 @@
 /* ambaIntrCtl.c - AMBA interrupt controller driver */
 
-/* Copyright 1984-2005, Wind River Systems, Inc. */
-
 /*
 modification history
 --------------------
+01b,15sep11,d_l  add SIC support.
 01a,13aug11,d_l  created from ambaIntcrl.c
 */
 
@@ -13,7 +12,6 @@ modification history
 #include "intLib.h"
 
 IMPORT int ffsLsb (UINT32);
-
 
 /* Defines from config.h, or <bsp>.h */
 
@@ -70,6 +68,7 @@ LOCAL UINT32 ambaIntLvlCurrent = AMBA_INT_ALL_DISABLED; /* all levels disabled*/
  */
 
 LOCAL UINT32 ambaIntLvlEnabled;
+LOCAL UINT32 ambaIntLvlEnabledSIC;
 
 /* use this table for INT 0-31*/
 LOCAL UINT32 ambaIntLvlMask [AMBA_INT_NUM_LEVELS + 1] = /* int lvl mask */
@@ -131,7 +130,7 @@ int ambaIntDevInit (void)
     sysIntLvlDisableRtn	= ambaIntLvlDisable;
 
     ambaIntLvlEnabled = 0; 	/* all sources disabled */
-
+    ambaIntLvlEnabledSIC = 0; 	/* all sources disabled */
     ambaIntLvlChg (AMBA_INT_ALL_ENABLED); /* enable all levels */
 
     return OK;
@@ -162,8 +161,8 @@ STATUS  ambaIntLvlVecChk
     int* pVector  /* ptr to receive current interrupt vector */
     )
     {
-    int newLevel;
-    UINT32 isr;
+    int newLevel, newSicLevel;
+    UINT32 isr, sicStatus;
     
 
     /* Read pending interrupt register and mask undefined bits */
@@ -174,14 +173,27 @@ STATUS  ambaIntLvlVecChk
 
     if (isr == 0)
 	return ERROR;
-
+	
+	/* only bit 31 is set */
+	
+	if ((isr & 0x7fffffff) == 0)
+	    {
+	    sicStatus = *(volatile UINT32 *) SIC_STATUS;
+	    newSicLevel = ffsLsb (sicStatus);
+	    if (newSicLevel == 0)
+	        return ERROR;
+        --newSicLevel;		/* ffsLsb returns numbers from 1, not 0 */	
+        newLevel = newSicLevel + 32;  
+	    }
+    else
+    {
     /* find first bit set in ISR, starting from lowest-numbered bit */
 
     if (newLevel = ffsLsb (isr), newLevel == 0)
 	return ERROR;
 
     --newLevel;		/* ffsLsb returns numbers from 1, not 0 */
-
+    }
     /* change to new interrupt level, returning previous level to caller */
 
     *pVector = newLevel;
@@ -252,15 +264,22 @@ int  ambaIntLvlChg
 	ambaIntLvlCurrent = level;
 	}
 
+    if (ambaIntLvlCurrent <32)
+    {
     /* Switch off all interrupts */
-
+    
     AMBA_INT_REG_WRITE (AMBA_INT_CSR_DIS, (UINT32)-1);
 
     /* Activate the enabled interrupts */
 
     AMBA_INT_REG_WRITE (AMBA_INT_CSR_ENB,
 		(ambaIntLvlMask[ambaIntLvlCurrent] & ambaIntLvlEnabled));
-
+    }
+    else
+    {
+    *(volatile UINT32 *)SIC_ENCLR = 0xffffffff;
+    *(volatile UINT32 *)SIC_ENSET = (ambaIntLvlMask[ambaIntLvlCurrent - 32] & ambaIntLvlEnabledSIC);
+    }
     return oldLevel;
     }
 
@@ -292,7 +311,14 @@ STATUS  ambaIntLvlEnable
     /* set bit in enable mask */
 
     key = intLock ();
-    ambaIntLvlEnabled |= (1 << level);
+    if (level < 32)
+        {
+        ambaIntLvlEnabled |= (1 << level);
+        }
+    else
+        {
+        ambaIntLvlEnabledSIC |= (1 << (level - 32));    
+        }
     intUnlock (key);
 
     ambaIntLvlChg (-1);	/* reset current mask */
@@ -327,7 +353,14 @@ STATUS  ambaIntLvlDisable
     /* clear bit in enable mask */
 
     key = intLock ();
-    ambaIntLvlEnabled &= ~(1 << level);
+    if (level < 32)
+        {
+        ambaIntLvlEnabled &= ~(1 << level);
+        }
+    else
+        {
+        ambaIntLvlEnabledSIC &= ~(1 << (level - 32));    
+        }
     intUnlock (key);
 
     ambaIntLvlChg (-1);	/* reset current mask */

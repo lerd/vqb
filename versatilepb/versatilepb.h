@@ -1,17 +1,9 @@
 /* versatilepb.h - ARM VersatilePb header file */
 
 /*
- * Copyright (c) 1999-2007 Wind River Systems, Inc.
- *
- * The right to copy, distribute or otherwise make use of this software
- * may be licensed only pursuant to the terms of an applicable Wind River
- * license agreement.
- */
-/* Copyright 1999-2000 ARM Limited */
-
-/*
 modification history
 --------------------
+01b,15sep11,d_l  add SIC definitions.
 01a,14aug11,d_l  modified from integrator926ejs.
 */
 
@@ -343,8 +335,19 @@ extern "C" {
 #define IRQ_VECTADDR	(IC_BASE+0x030)
 #define IRQ_DEFVECTADDR	(IC_BASE+0x034)
 
+#define SIC_BASE        (0x10003000)
+#define SIC_STATUS      (SIC_BASE + 0x00)
+#define SIC_RAWSTAT     (SIC_BASE + 0x04)
+#define SIC_ENABLE      (SIC_BASE + 0x08)
+#define SIC_ENSET       (SIC_BASE + 0x08)
+#define SIC_ENCLR       (SIC_BASE + 0x0c)
+#define SIC_SOFTINTSET  (SIC_BASE + 0x10)
+#define SIC_SOFTINTCLR  (SIC_BASE + 0x14)
+#define SIC_PICENABLE   (SIC_BASE + 0x18)
+#define SIC_PICENSET    (SIC_BASE + 0x20)
+#define SIC_PICENCLR    (SIC_BASE + 0x24)
 
-#define AMBA_INT_NUM_LEVELS	32
+#define AMBA_INT_NUM_LEVELS	64
 #define AMBA_INT_CSR_PEND	IRQ_IRQSTATUS
 #define AMBA_INT_CSR_ENB	IRQ_INTENABLE
 #define AMBA_INT_CSR_DIS	IRQ_INTENCLEAR
